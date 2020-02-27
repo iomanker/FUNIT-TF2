@@ -1,6 +1,6 @@
 import tensorflow as tf
-from blocks_layers import *
-
+from blocks import *
+from layers import *
 # Zx
 class ContentEncoder(tf.keras.Model):
     def __init__(self,downs,n_res,n_filters,norm,activation,pad_type):
@@ -59,7 +59,7 @@ class Decoder(tf.keras.Model):
             self.AdaIN_model.append(Res_AdaINBlock(n_filters,
                                                    activation=activation,
                                                    pad_type=pad_type))
-            
+        
         # Transposed Conv2D vs Upsampling with Conv
         # https://github.com/keras-team/keras/issues/7307
         # https://distill.pub/2016/deconv-checkerboard/
@@ -78,4 +78,18 @@ class Decoder(tf.keras.Model):
     def call(self,x,y):
         for layer in self.AdaIN_model:
             x, _ = layer(x,y)
+        return self.model(x)
+    
+class MLP(tf.keras.Model):
+    def __init__(self, out_dim, dim, n_blk, activation):
+        super(MLP,self).__init__()
+        self.model = tf.keras.Sequential()
+        self.model.add(LinearBlock(dim,
+                                   activation=activation))
+        for _ in range(n_blk - 2):
+            self.model.add(LinearBlock(dim,
+                                       activation=activation))
+        self.model.add(LinearBlock(out_dim,
+                                   activation='none'))
+    def call(self,x):
         return self.model(x)

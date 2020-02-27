@@ -65,6 +65,32 @@ class ResnetIdentityBlock(tf.keras.Model):
         out += res
         return out
     
+class PreActiResBlock(tf.keras.Model):
+    def __init__(self,in_dim,out,dim,hidden_dim=None,
+                 activation='relu',norm='none'):
+        super(PreActiResBlock,self).__init__()
+        # NEED EXPLANATION for learned_shortcut
+        self.learned_shortcut = (in_dim != out_dim)
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.hidden_dim = min(in_dim,out_dim) if hidden_dim is None else hidden_dim
+        self.conv_0 = Conv2DBlock(self.hidden_dim,3,1,
+                                  padding=1, pad_type='reflect', norm=norm,
+                                  activation=activation, activation_first=True)
+        self.conv_1 = Conv2DBlock(self.out_dim,3,1,
+                                  padding=1, pad_type='reflect', norm=norm,
+                                  activation=activation, activation_first=True)
+        if self.learned_shortcut:
+            self.conv_s = Conv2DBlock(self.out_dim,1,1,
+                                      activation='none',use_bias=False)
+            
+        def call(self,x):
+            x_s = self.conv_s(x) if self.learned_shortcut else x
+            x = self.conv_0(x)
+            x = self.conv_1(x)
+            out = x + x_s
+            return out
+    
 class LinearBlock(tf.keras.Model):
     def __init__(self,out_dim,norm='none',activation='relu'):
         super(LinearBlock,self).__init__()
