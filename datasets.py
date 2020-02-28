@@ -54,13 +54,29 @@ class ImageLabelFilelist(tf.data.Dataset):
                 output_types = (tf.string,tf.uint8),
                 args = (img_root,img_list,idx_list,))
 
-def get_tf_dataset(data_loader_train,data_list_train,
-                crop_size,resize_size,
-                img_processor=default_img_processor,
-                img_transformer=default_img_transformer):
+def get_tf_dataset(data_folder, data_list,
+                batch_size=1, crop_size, resize_size, num_shuffle,
+                img_processor = default_img_processor,
+                img_transformer = default_img_transformer):
     # set datasets we want.
-    return ImageLabelFilelist(data_loader_train,data_list_train).shuffle(2000).take(2).map(img_processor)\
-           .map(lambda x,y: (img_transformer(x,crop_size,resize_size),y))
+    return ImageLabelFilelist(data_folder,data_list).shuffle(num_shuffle).batch(batch_size).map(img_processor)\
+           .cache().map(lambda x,y: (img_transformer(x,crop_size,resize_size),y)).prefetch(tf.data.experimental.AUTOTUNE)
 
 def get_datasets(config):
-    # get_tf_dataset(data_loader_train,data_list_train,crop_size,resize_size)
+    batch_size = config['batch_size']
+    new_size = config['new_size'] # resize_size
+    height = config['crop_image_height']
+    width = config['crop_image_width']
+    crop_size = (height,width)
+    num_shuffle = 100000
+    train_content_dataset = get_tf_dataset(config['data_folder_train'], config['data_list_train'],
+                                           batch_size, crop_size, new_size, num_shuffle)
+    train_class_dataset = get_tf_dataset(config['data_folder_train'], config['data_list_train'],
+                                         batch_size, crop_size, new_size, num_shuffle)
+    
+    test_content_dataset = get_tf_dataset(config['data_folder_test'], config['data_folder_test'],
+                                          batch_size, crop_size, new_size, num_shuffle)
+    test_class_dataset = get_tf_dataset(config['data_folder_test'], config['data_folder_test'],
+                                        batch_size, crop_size, new_size, num_shuffle)
+    return (train_content_dataset, train_class_dataset,
+            test_content_dataset,  test_class_dataset)

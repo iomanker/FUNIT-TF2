@@ -38,6 +38,7 @@ def featmatch_loss(pred_feat, class_pred_feat):
 # https://github.com/timsainb/tensorflow2-generative-models/blob/master/3.0-WGAN-GP-fashion-mnist.ipynb
 def gradient_penalty(d_out, x_in):
     batch_size = tf.shape(x_in)[0]
+    # https://www.tensorflow.org/api_docs/python/tf/gradients
     grad_dout = tf.gradients(tf.reduce_mean(d_out),x_in)
     grad_dout2 = grad_dout ** 2
     assert tf.shape(grad_dout2) == tf.shape(x_in)
