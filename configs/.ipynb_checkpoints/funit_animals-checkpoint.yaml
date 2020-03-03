@@ -38,7 +38,7 @@ batch_size: 64
 new_size: 140                 # first resize the shortest image side to this size
 crop_image_height: 128        # random crop image of this height
 crop_image_width: 128         # random crop image of this width
-data_folder_train: ./datasets/animals
-data_list_train: ./datasets/animals_list_train.txt
-data_folder_test: ./datasets/animals
-data_list_test: ./datasets/animals_list_test.txt
+data_folder_train: ../FUNIT/datasets/animals/
+data_list_train: ../FUNIT/datasets/animals_list_train.txt
+data_folder_test: ../FUNIT/datasets/animals/
+data_list_test: ../FUNIT/datasets/animals_list_test.txt

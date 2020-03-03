@@ -38,7 +38,9 @@ class AdaptiveInstanceNorm2D(tf.keras.layers.Layer):
         # x: a content input / y: a style input
         x_mean, x_var = tf.nn.moments(x, axes=[1,2], keepdims=True)
         y_shape = tf.shape(y)
-        y =  tf.reshape(y,[int(y_shape[0]),1,1,int(y_shape[1])])
+        
+        # y =  tf.reshape(y,[int(y_shape[0]),1,1,int(y_shape[1])])
+        y = tf.reduce_mean(y,[1,2],keepdims=True)
         y_mean, y_var = tf.split(y,num_or_size_splits=2,axis=3)
         x_inv = tf.math.rsqrt(x_var + self.epsilon)
         x_normalized = (x - x_mean) * x_inv

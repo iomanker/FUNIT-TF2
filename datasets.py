@@ -21,11 +21,11 @@ def default_img_processor(filepath,label):
     return img, label
 
 def default_img_transformer(img,crop_size,resize_size):
-    # crop
     img_shape = tf.shape(img)
-    img = tf.image.random_crop(img,size=[tf.minimum(crop_size[0],img_shape[0]),tf.minimum(crop_size[1],img_shape[1]),3])
     # resize
     img = tf.image.resize(img,resize_size)
+    # crop
+    img = tf.image.random_crop(img,size=[crop_size[0],crop_size[1],3])
     
     # horizontal flip
     img = tf.image.random_flip_left_right(img)
@@ -55,28 +55,29 @@ class ImageLabelFilelist(tf.data.Dataset):
                 args = (img_root,img_list,idx_list,))
 
 def get_tf_dataset(data_folder, data_list,
-                batch_size=1, crop_size, resize_size, num_shuffle,
+                batch_size, crop_size, resize_size, num_shuffle,
                 img_processor = default_img_processor,
                 img_transformer = default_img_transformer):
     # set datasets we want.
-    return ImageLabelFilelist(data_folder,data_list).shuffle(num_shuffle).batch(batch_size).map(img_processor)\
-           .cache().map(lambda x,y: (img_transformer(x,crop_size,resize_size),y)).prefetch(tf.data.experimental.AUTOTUNE)
+    return ImageLabelFilelist(data_folder,data_list).map(img_processor)\
+           .map(lambda x,y: (img_transformer(x,crop_size,resize_size),y)).shuffle(num_shuffle).batch(batch_size).cache().prefetch(tf.data.experimental.AUTOTUNE)
 
 def get_datasets(config):
     batch_size = config['batch_size']
     new_size = config['new_size'] # resize_size
+    resize_size = (new_size, new_size)
     height = config['crop_image_height']
     width = config['crop_image_width']
     crop_size = (height,width)
     num_shuffle = 100000
     train_content_dataset = get_tf_dataset(config['data_folder_train'], config['data_list_train'],
-                                           batch_size, crop_size, new_size, num_shuffle)
+                                           batch_size, crop_size, resize_size, num_shuffle)
     train_class_dataset = get_tf_dataset(config['data_folder_train'], config['data_list_train'],
-                                         batch_size, crop_size, new_size, num_shuffle)
+                                         batch_size, crop_size, resize_size, num_shuffle)
     
-    test_content_dataset = get_tf_dataset(config['data_folder_test'], config['data_folder_test'],
-                                          batch_size, crop_size, new_size, num_shuffle)
-    test_class_dataset = get_tf_dataset(config['data_folder_test'], config['data_folder_test'],
-                                        batch_size, crop_size, new_size, num_shuffle)
+    test_content_dataset = get_tf_dataset(config['data_folder_test'], config['data_list_test'],
+                                          batch_size, crop_size, resize_size, num_shuffle)
+    test_class_dataset = get_tf_dataset(config['data_folder_test'], config['data_list_test'],
+                                        batch_size, crop_size, resize_size, num_shuffle)
     return (train_content_dataset, train_class_dataset,
             test_content_dataset,  test_class_dataset)

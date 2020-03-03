@@ -29,7 +29,7 @@ class Conv2DBlock(tf.keras.Model):
         if activation == 'relu':
             self.activation = tf.keras.activations.relu
         elif activation == 'leakyrelu':
-            self.activation = tf.keras.layers.LeakyReLU
+            self.activation = tf.keras.layers.LeakyReLU()
         elif activation == 'tanh':
             self.activation = tf.keras.activations.tanh
         else:
@@ -66,7 +66,7 @@ class ResnetIdentityBlock(tf.keras.Model):
         return out
     
 class PreActiResBlock(tf.keras.Model):
-    def __init__(self,in_dim,out,dim,hidden_dim=None,
+    def __init__(self,in_dim,out_dim,hidden_dim=None,
                  activation='relu',norm='none'):
         super(PreActiResBlock,self).__init__()
         # NEED EXPLANATION for learned_shortcut
@@ -84,12 +84,12 @@ class PreActiResBlock(tf.keras.Model):
             self.conv_s = Conv2DBlock(self.out_dim,1,1,
                                       activation='none',use_bias=False)
             
-        def call(self,x):
-            x_s = self.conv_s(x) if self.learned_shortcut else x
-            x = self.conv_0(x)
-            x = self.conv_1(x)
-            out = x + x_s
-            return out
+    def call(self,x):
+        x_s = self.conv_s(x) if self.learned_shortcut else x
+        x = self.conv_0(x)
+        x = self.conv_1(x)
+        out = x + x_s
+        return out
     
 class LinearBlock(tf.keras.Model):
     def __init__(self,out_dim,norm='none',activation='relu'):
@@ -132,7 +132,7 @@ class Conv2D_AdaINBlock(tf.keras.Model):
         if activation == 'relu':
             self.activation = tf.keras.activations.relu
         elif activation == 'leakyrelu':
-            self.activation = tf.keras.layers.LeakyReLU
+            self.activation = tf.keras.layers.LeakyReLU()
         elif activation == 'tanh':
             self.activation = tf.keras.activations.tanh
         else:
