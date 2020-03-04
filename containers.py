@@ -65,11 +65,13 @@ class Discriminator(tf.keras.Model):
                                       norm="none", activation='leakyrelu', activation_first=True)
         
     def call(self,x,y):
-        assert tf.shape(x)[0] == tf.shape(y)[0]
+        # assert tf.shape(x)[0] == tf.shape(y)[0]
         feat = self.model(x)
         out = self.last_layer(feat)
-        y_idx = np.array(range(0,tf.shape(y)[0]))
-        y_idx = np.array(list(zip(y_idx,y.numpy())))
+        y_idx = tf.cast(tf.range(0,tf.shape(y)[0]), tf.int32)
+        y_idx = tf.stack([y_idx, tf.cast(y, tf.int32)], axis=1)
+        # y_idx = np.array(range(0,tf.shape(y)[0]))
+        # y_idx = np.array(list(zip(y_idx,y.numpy())))
         out = tf.transpose(out, perm=[0, 3, 1, 2]) 
         out = tf.gather_nd(out, y_idx)
         return out, feat
