@@ -3,6 +3,7 @@ from losses import *
 from containers import *
 from utils import *
 
+# Generator + Discriminator
 @tf.function
 def train_step(nets,co_data,cl_data,config):
     xa, la = co_data
@@ -51,15 +52,16 @@ def train_step(nets,co_data,cl_data,config):
     return_items['G_loss'] = G_loss
     return_items['D_loss'] = D_loss
     return return_items
-
+    
+# Output Generator Image
 def test_step(nets,co_data,cl_data,config):
     xa, la = co_data
     xb, lb = cl_data
     return_items = {}
     xt, xr, xa_gan_feat, xb_gan_feat = nets.gen_update(co_data,cl_data,config)
-    return_items['xa'] = xa
-    return_items['xb'] = xb
-    return_items['xr'] = xr
-    return_items['xt'] = xt
+    return_items['xa'] = xa.numpy()
+    return_items['xb'] = xb.numpy()
+    return_items['xr'] = xr.numpy()
+    return_items['xt'] = xt.numpy()
     return_items['display_list'] = ['xa','xr','xt','xb']
     return return_items

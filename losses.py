@@ -23,7 +23,7 @@ class GANloss():
         return loss
 # Reconstruction loss
 def recon_loss(a,b):
-    mae = tf.keras.losses.MeanAbsoluteError()
+    mae = tf.keras.losses.MeanAbsoluteError(reduction=tf.keras.losses.Reduction.NONE)
     return mae(a,b)
 # Features matching loss
 def featmatch_loss(pred_feat, class_pred_feat):
@@ -31,7 +31,7 @@ def featmatch_loss(pred_feat, class_pred_feat):
     pred_feat = tf.reduce_mean(pred_feat,1)
     class_pred_feat = tf.reduce_mean(class_pred_feat,2)
     class_pred_feat = tf.reduce_mean(class_pred_feat,1)
-    mae = tf.keras.losses.MeanAbsoluteError()
+    mae = tf.keras.losses.MeanAbsoluteError(reduction=tf.keras.losses.Reduction.NONE)
     return mae(class_pred_feat,pred_feat)
 
 # Gradient-Penalty Regularization

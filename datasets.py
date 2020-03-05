@@ -60,8 +60,9 @@ def get_tf_dataset(data_folder, data_list,
                 img_transformer = default_img_transformer):
     # set datasets we want.
     return ImageLabelFilelist(data_folder,data_list).shuffle(num_shuffle).map(img_processor)\
-           .map(lambda x,y: (img_transformer(x,crop_size,resize_size),y))\
-           .batch(batch_size).cache().prefetch(tf.data.experimental.AUTOTUNE)
+           .map(lambda x,y: (img_transformer(x,crop_size,resize_size),y))
+           # Without experimental_distribute_datasets_from_function
+           # .batch(batch_size).cache().prefetch(tf.data.experimental.AUTOTUNE)
 
 def get_datasets(config):
     batch_size = config['batch_size']
@@ -70,7 +71,7 @@ def get_datasets(config):
     height = config['crop_image_height']
     width = config['crop_image_width']
     crop_size = (height,width)
-    num_shuffle = 20000
+    num_shuffle = 100000
     train_content_dataset = get_tf_dataset(config['data_folder_train'], config['data_list_train'],
                                            batch_size, crop_size, resize_size, num_shuffle)
     train_class_dataset = get_tf_dataset(config['data_folder_train'], config['data_list_train'],
