@@ -74,13 +74,13 @@ if __name__ == "__main__":
             output_train_dataset = train_dataset.take(opts.test_batch_size)
             output_test_dataset = test_dataset.take(opts.test_batch_size)
             for idx, (co_data, cl_data) in output_train_dataset.enumerate():
-                test_returns = test_step(co_data,cl_data,config)
+                test_returns = test_step(networks,co_data,cl_data,config)
                 write_images(zip(test_returns['xa'],test_returns['xr'],test_returns['xt'],test_returns['xb']), 
                              test_returns['display_list'],
                              'train_%s_%02d' % (key_str, idx),
                              max(config['crop_image_height'], config['crop_image_width']))
             for idx, (co_data, cl_data) in output_test_dataset.enumerate():
-                test_returns = test_step(co_data,cl_data,config)
+                test_returns = test_step(networks,co_data,cl_data,config)
                 write_images(zip(test_returns['xa'],test_returns['xr'],test_returns['xt'],test_returns['xb']), 
                              test_returns['display_list'],
                              'test_%s_%02d' % (key_str, idx),

@@ -16,8 +16,8 @@ def get_config(config):
 def write_images(images, display_list, filename, square_size=128):
     # suppose images shape is zip(xa,xr,xt,xb) = [(xa[0],xr[0],xt[0],xb[0]),...]
     # display_list = ['xa','xr','xt','xb']
-    category_imgs = len(images[0]) # 4
-    batch_size = len(images)
+    category_imgs = len(images) # 4
+    batch_size = len(images[0])
     nrow = category_imgs
     ncol = batch_size
     fig = plt.figure(figsize=(ncol+1, nrow+1), dpi=square_size)
@@ -28,7 +28,9 @@ def write_images(images, display_list, filename, square_size=128):
     for j in range(ncol):
         for i in range(nrow):
             ax = plt.subplot(gs[i,j])
-            ax.imshow(images[j][i])
+            ax.imshow(images[i][j])
+            # convert to [0..1]
+            
             ax.set_xticklabels([])
             ax.set_yticklabels([])
             ax.tick_params(axis=u'both', which=u'both',length=0)
