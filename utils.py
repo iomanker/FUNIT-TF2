@@ -9,6 +9,9 @@ def show(image, label):
     plt.title(label.numpy())
     plt.axis('off')
     
+def img_to_uint8(img):
+    return np.uint8(img*127.5+128).clip(0, 255)
+    
 def get_config(config):
     with open(config, 'r') as stream:
         return yaml.load(stream, Loader=yaml.FullLoader)
@@ -28,9 +31,7 @@ def write_images(images, display_list, filename, square_size=128):
     for j in range(ncol):
         for i in range(nrow):
             ax = plt.subplot(gs[i,j])
-            ax.imshow(images[i][j])
-            # convert to [0..1]
-            
+            ax.imshow(img_to_uint8(images[i][j]))
             ax.set_xticklabels([])
             ax.set_yticklabels([])
             ax.tick_params(axis=u'both', which=u'both',length=0)
@@ -39,3 +40,4 @@ def write_images(images, display_list, filename, square_size=128):
             if j == 0:
                 plt.ylabel(display_list[i])
     plt.savefig(filename + '.png',bbox_inches='tight')
+    plt.close('all')

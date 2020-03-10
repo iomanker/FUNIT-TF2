@@ -1,4 +1,5 @@
 import tensorflow as tf
+import os
 
 def default_filelist_reader(list_filename):
     img_list = []
@@ -17,7 +18,9 @@ def default_img_processor(filepath,label):
     # [0,1]
     img = tf.image.convert_image_dtype(raw_img,tf.float32)
     # [-1,1]
-    img = tf.image.per_image_standardization(img)
+    # img = tf.image.per_image_standardization(img)
+    img = tf.subtract(img, 0.5)
+    img = tf.multiply(img, 2.0)
     return img, label
 
 def default_img_transformer(img,crop_size,resize_size):
@@ -35,7 +38,7 @@ def default_img_transformer(img,crop_size,resize_size):
 class ImageLabelFilelist(tf.data.Dataset):
     def _generator(img_root, input_list,idx_list):
         for item in zip(input_list,idx_list):
-            yield (img_root + item[0], item[1])
+            yield (os.path.join(img_root,item[0]), item[1])
     def __new__(cls, img_root,
                 list_filename,
                 filelist_reader=default_filelist_reader):
