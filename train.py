@@ -52,7 +52,7 @@ if __name__ == "__main__":
     train_dataset = tf.data.Dataset.zip((train_content_dataset, train_class_dataset))
     def train_ds_fn(input_context):
         batch_size = input_context.get_per_replica_batch_size(GLOBAL_BATCH_SIZE)
-        d = train_dataset.batch(batch_size, drop_remainder=True)
+        d = train_dataset.batch(batch_size)
         return d.shard(input_context.num_input_pipelines, input_context.input_pipeline_id)
     dist_train_dataset = strategy.experimental_distribute_datasets_from_function(train_ds_fn)
     # -- Test
@@ -149,41 +149,43 @@ if __name__ == "__main__":
         iteration = 1
         for epoch in range(1,EPOCHS+1):
             print("epoch %d: " % epoch)
-                
-            for x in dist_train_dataset:
-                start_time = time.time()
-                G_loss, D_loss = distributed_train_step(x, config)
-                print(" (%d/%d) G_loss: %.4f, D_loss: %.4f, time: %.5f" % (iteration,config['max_iter'],G_loss,D_loss,(time.time() - start_time)))
-            
-                # Test Step (Print this interval result)
-                if iteration % config['image_save_iter'] == 0 or\
-                   iteration % config['image_display_iter'] == 0:
-                    gen_ckpt.save(os.path.join(gen_ckpt_prefix, "ckpt"))
-                    dis_ckpt.save(os.path.join(dis_ckpt_prefix, "ckpt"))
-                    print("load newest ckpt file: %s" % tf.train.latest_checkpoint(gen_ckpt_prefix))
-                    test_gen_ckpt.restore(tf.train.latest_checkpoint(gen_ckpt_prefix))
-                    if iteration % config['image_save_iter'] == 0:
-                        key_str = '%08d' % iteration
-                    else:
-                        key_str = 'current'
-                    output_train_dataset = train_dataset.batch(GLOBAL_BATCH_SIZE).take(opts.test_batch_size)
-                    output_test_dataset = test_dataset.batch(GLOBAL_BATCH_SIZE).take(opts.test_batch_size)
-                    for idx,(co_data, cl_data) in output_train_dataset.enumerate():
-                        test_returns = test_step(test_networks,co_data,cl_data,config)
-                        write_images((test_returns['xa'],test_returns['xr'],test_returns['xt'],test_returns['xb']), 
-                                     test_returns['display_list'],
-                                     os.path.join(opts.output_path, 'train_%s_%02d' % (key_str, idx)),
-                                     max(config['crop_image_height'], config['crop_image_width']))
-                    for idx,(co_data, cl_data) in output_test_dataset.enumerate():
-                        test_returns = test_step(test_networks,co_data,cl_data,config)
-                        write_images((test_returns['xa'],test_returns['xr'],test_returns['xt'],test_returns['xb']), 
-                                     test_returns['display_list'],
-                                     os.path.join(opts.output_path, 'test_%s_%02d' % (key_str, idx)),
-                                     max(config['crop_image_height'], config['crop_image_width']))
-                    
-                iteration += 1
-                if iteration >= config['max_iter']:
-                    print("End of iteration")
-                    break
+            try:
+                for x in dist_train_dataset:
+                    start_time = time.time()
+                    G_loss, D_loss = distributed_train_step(x, config)
+                    print(" (%d/%d) G_loss: %.4f, D_loss: %.4f, time: %.5f" % (iteration,config['max_iter'],G_loss,D_loss,(time.time() - start_time)))
+
+                    # Test Step (Print this interval result)
+                    if iteration % config['image_save_iter'] == 0 or\
+                       iteration % config['image_display_iter'] == 0:
+                        gen_ckpt.save(os.path.join(gen_ckpt_prefix, "ckpt"))
+                        dis_ckpt.save(os.path.join(dis_ckpt_prefix, "ckpt"))
+                        print("load newest ckpt file: %s" % tf.train.latest_checkpoint(gen_ckpt_prefix))
+                        test_gen_ckpt.restore(tf.train.latest_checkpoint(gen_ckpt_prefix))
+                        if iteration % config['image_save_iter'] == 0:
+                            key_str = '%08d' % iteration
+                        else:
+                            key_str = 'current'
+                        output_train_dataset = train_dataset.batch(GLOBAL_BATCH_SIZE).take(opts.test_batch_size)
+                        output_test_dataset = test_dataset.batch(GLOBAL_BATCH_SIZE).take(opts.test_batch_size)
+                        for idx,(co_data, cl_data) in output_train_dataset.enumerate():
+                            test_returns = test_step(test_networks,co_data,cl_data,config)
+                            write_images((test_returns['xa'],test_returns['xr'],test_returns['xt'],test_returns['xb']), 
+                                         test_returns['display_list'],
+                                         os.path.join(opts.output_path, 'train_%s_%02d' % (key_str, idx)),
+                                         max(config['crop_image_height'], config['crop_image_width']))
+                        for idx,(co_data, cl_data) in output_test_dataset.enumerate():
+                            test_returns = test_step(test_networks,co_data,cl_data,config)
+                            write_images((test_returns['xa'],test_returns['xr'],test_returns['xt'],test_returns['xb']), 
+                                         test_returns['display_list'],
+                                         os.path.join(opts.output_path, 'test_%s_%02d' % (key_str, idx)),
+                                         max(config['crop_image_height'], config['crop_image_width']))
+
+                    iteration += 1
+                    if iteration >= config['max_iter']:
+                        print("End of iteration")
+                        break
+            except TypeError:
+                print("Distributed Training doesn't have a functionality of drop_remainder,\n  keep training and still waiting for Tensorflow fixing this problem.")
             if iteration >= config['max_iter']:
                 break
