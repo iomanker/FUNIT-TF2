@@ -22,6 +22,10 @@ if __name__ == "__main__":
                         type=str,
                         default='./outputs',
                         help="outputs path")
+    parser.add_argument('--ckpt_path',
+                        type=str,
+                        default='./training_checkpoints',
+                        help="checkpoint path")
     parser.add_argument('--multigpus',
                         action="store_true")
     parser.add_argument('--test_batch_size',
@@ -134,7 +138,7 @@ if __name__ == "__main__":
             return gen_loss, dis_loss
         
         # Checkpoint
-        checkpoint_dir = './training_checkpoints'
+        checkpoint_dir = opts.ckpt_path
         gen_ckpt_prefix = os.path.join(checkpoint_dir, "gen_ckpt")
         dis_ckpt_prefix = os.path.join(checkpoint_dir, "dis_ckpt")
         gen_ckpt = tf.train.Checkpoint(optimizer= networks.opt_gen, net= networks.gen)
