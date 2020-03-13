@@ -20,14 +20,14 @@
 This step is followed by original FUNIT. Please click [here](https://github.com/NVlabs/FUNIT/#dataset-preparation).
 ## Training
 ### Arguments 
-| Args              | Description                                                     |
-| ----------------- | --------------------------------------------------------------- |
-| `config`          | a path of config yaml file                                      |
-| `output_path`     | a path of results of images' output                             |
-| `ckpt_path`       | a path of checkpoints to be saved                               |
-| `multigpus`       | Whether or not turn on multi-gpus                               |
-| `test_batch_size` | a number of test images to be produced                          |
-| `resume`          | Whether or not continue to training by former stored checkpoint |
+| Args              | Description                                                  |
+| ----------------- | ------------------------------------------------------------ |
+| `config`          | a path of config yaml file                                   |
+| `output_path`     | a path of results of images' output                          |
+| `ckpt_path`       | a path of saved checkpoints                                  |
+| `multigpus`       | Whether or not turn on multi-gpus                            |
+| `test_batch_size` | a number of produced test images                             |
+| `resume`          | Whether or not continue training by former stored checkpoint |
 ### Command
 ```
 python train.py --config configs/funit_animals.yaml --multigpus
@@ -36,11 +36,11 @@ python train.py --config configs/funit_animals.yaml --multigpus
 ### Main
 * `train.py`: a main entry to train network.
 * `run_step.py`: `train_step` & `test_step` on sigle GPU.
-* `datasets.py`: Processing into tf.data.Dataset.
-* `losses.py`: All of loss function are here.
+* `datasets.py`: Processing raw data into tf.data.Dataset.
+* `losses.py`: All of loss functions are here.
 * `containers.py`: `FUNIT` model, `Generator`, `Discriminator`.
 * `models.py`: `Encoder`, `Decoder` etc.
-* `blocks.py`: blocks of `Conv2D`, `ResIdentity`, etc.
+* `blocks.py`: Blocks of `Conv2D`, `ResIdentity`, etc.
 * `layers.py`: `InstanceNorm`, `AdaIN`, `ReflectionPadding`.
 * `utils.py`: Some used functions. 
 ### Other

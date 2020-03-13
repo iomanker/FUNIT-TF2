@@ -62,14 +62,13 @@ if __name__ == "__main__":
     # -- Test
     test_content_dataset = datasets[2]
     test_class_dataset = datasets[3]
-    test_dataset = tf.data.Dataset.zip((train_content_dataset, train_class_dataset))
+    test_dataset = tf.data.Dataset.zip((test_content_dataset, test_class_dataset))
     
     # Networks
     with strategy.scope():
         networks = FUNIT(config)
         test_networks = FUNIT(config)
         
-        #有 networks 在裡頭，不知道如何分離
         # Split Distributed training example: 
         # -- https://github.com/tensorflow/examples/blob/master/tensorflow_examples/models/nmt_with_attention/distributed_train.py
         def gen_train_step(x, config):
