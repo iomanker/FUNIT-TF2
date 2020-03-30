@@ -17,8 +17,6 @@ def get_config(config):
         return yaml.load(stream, Loader=yaml.FullLoader)
     
 def write_images(images, display_list, filename, square_size=128):
-    # suppose images shape is zip(xa,xr,xt,xb) = [(xa[0],xr[0],xt[0],xb[0]),...]
-    # display_list = ['xa','xr','xt','xb']
     category_imgs = len(images) # 4
     batch_size = len(images[0])
     nrow = category_imgs

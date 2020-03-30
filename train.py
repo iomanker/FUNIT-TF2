@@ -125,6 +125,12 @@ if __name__ == "__main__":
             networks.opt_dis.apply_gradients(zip(dis_grad, networks.dis.trainable_variables))
             return D_loss
         
+    # Tensorboard - Setup
+    import datetime
+    current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    train_log_dir = os.path.join(opts.log_path, current_time, 'train')
+    train_summary_writer = tf.summary.create_file_writer(train_log_dir)
+        
     # Start Training
     with strategy.scope():
         @tf.function
@@ -158,6 +164,10 @@ if __name__ == "__main__":
                     start_time = time.time()
                     G_loss, D_loss = distributed_train_step(x, config)
                     print(" (%d/%d) G_loss: %.4f, D_loss: %.4f, time: %.5f" % (iteration,config['max_iter'],G_loss,D_loss,(time.time() - start_time)))
+                    # Tensorboard - Record losses
+                    with train_summary_writer.as_default():
+                        tf.summary.scalar('g_loss', G_loss, step=iteration)
+                        tf.summary.scalar('d_loss', D_loss, step=iteration)
 
                     # Test Step (Print this interval result)
                     if iteration % config['image_save_iter'] == 0 or\
