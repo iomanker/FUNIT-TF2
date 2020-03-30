@@ -149,11 +149,12 @@ if __name__ == "__main__":
             gen_ckpt.restore(tf.train.latest_checkpoint(gen_ckpt_prefix))
             dis_ckpt.restore(tf.train.latest_checkpoint(dis_ckpt_prefix))
         
-        iteration = 1
+        iteration = 0
         for epoch in range(1,EPOCHS+1):
             print("epoch %d: " % epoch)
             try:
                 for x in dist_train_dataset:
+                    iteration += 1
                     start_time = time.time()
                     G_loss, D_loss = distributed_train_step(x, config)
                     print(" (%d/%d) G_loss: %.4f, D_loss: %.4f, time: %.5f" % (iteration,config['max_iter'],G_loss,D_loss,(time.time() - start_time)))
@@ -184,7 +185,6 @@ if __name__ == "__main__":
                                          os.path.join(opts.output_path, 'test_%s_%02d' % (key_str, idx)),
                                          max(config['crop_image_height'], config['crop_image_width']))
 
-                    iteration += 1
                     if iteration >= config['max_iter']:
                         print("End of iteration")
                         break
