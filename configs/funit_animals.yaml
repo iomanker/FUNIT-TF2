@@ -17,6 +17,7 @@ init: kaiming                 # initialization [gaussian/kaiming/xavier/orthogon
 gan_w: 1                      # weight of adversarial loss for image translation
 fm_w: 1                       # weight on distance between gan features of style and translated image
 r_w: 0.1                      # weight of image reconstruction loss
+vq_w: 0.4
 
 # model options
 gen:
@@ -27,6 +28,10 @@ gen:
   n_mlp_blks: 3               # number of mlp blocks
   n_downs_content: 3          # number of downsampling layers in content encoder
   n_downs_class: 4            # number of downsampling layers in class model encoder
+  vqvae:
+    num_classes: 119
+    dim_class: 128
+    commitment_cost: 0.25
 dis:
   nf: 64                      # base number of filters
   n_res_blks: 10              # number of residual blocks in the discriminator

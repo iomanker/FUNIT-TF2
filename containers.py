@@ -4,6 +4,7 @@ from layers import *
 from models import *
 from losses import *
 import numpy as np
+import sys
 
 class VQVAE_Generator(tf.keras.Model):
     def __init__(self, config):
@@ -24,22 +25,22 @@ class VQVAE_Generator(tf.keras.Model):
         
         # D - This value is not that important, usually 64 works.
         #   - This will not change the capacity in the information-bottleneck.
-        self.embedding_dim = 64
+        self.embedding_dim = config['vqvae']['dim_class']
         # K - The higher this value, the higher the capacity in the information bottleneck.
-        self.num_embeddings = 512
-        self.commitment_cost = 0.25
+        self.num_embeddings = config['vqvae']['num_classes']
+        self.commitment_cost = config['vqvae']['commitment_cost']
         self.pre_vqvae = tf.keras.layers.Conv2D(self.embedding_dim, kernel_size=1, strides=1, padding='valid')
         self.vq = VectorQuantizer(self.embedding_dim, self.num_embeddings, self.commitment_cost)
         
         self.E_class = ClassEncoder(downs=down_class,
-                                    latent_dim=latent_dim,
+                                    latent_dim=self.embedding_dim,
                                     n_filters=n_features,
                                     norm='none',activation='relu',pad_type='reflect')
         
         # self.E_content.output_filters*2
-        self.mlp = MLP(out_dim=self.embedding_dim*2,
-                       dim=n_features_mlp,
-                       n_blk=n_mlp_blocks, activation='relu')
+        # self.mlp = MLP(out_dim=self.embedding_dim*2,
+        #                dim=n_features_mlp,
+        #                n_blk=n_mlp_blocks, activation='relu')
         
         self.Dec = Decoder(ups=down_content,
                            n_res=n_res_blocks,
@@ -48,7 +49,8 @@ class VQVAE_Generator(tf.keras.Model):
                            activation='relu',pad_type='reflect')
         
     def decode(self, content, model_code):
-        adain_params = self.mlp(model_code)
+        # adain_params = self.mlp(model_code)
+        adain_params = model_code
         imgs = self.Dec(content,adain_params)
         return imgs
     
@@ -64,7 +66,7 @@ class VQVAE_FUNIT(tf.keras.Model):
         co_data, cl_data = x
         xa, la = co_data
         xb, lb = cl_data
-        with tf.GradientTape() as g_tape:
+        with tf.GradientTape() as g_tape, tf.GradientTape() as vq_tape:
             xt_g, xr, xa_gan_feat, xb_gan_feat, vqvae_loss = self.gen_produce(co_data, cl_data, config, True)
             
             resp_xr_fake, xr_gan_feat = self.dis(xr, la)
@@ -82,13 +84,23 @@ class VQVAE_FUNIT(tf.keras.Model):
             l_c_rec = tf.reduce_mean(l_c_rec)
             l_m_rec = featmatch_loss(xt_gan_feat, xb_gan_feat)
             l_m_rec = tf.reduce_mean(l_m_rec)
+            l_fm_rec = l_c_rec + l_m_rec
             
             G_loss = config['gan_w'] * l_adv + \
                      config['r_w'] * l_x_rec + \
-                     config['fm_w'] * (l_c_rec + l_m_rec) + \
-                     vqvae_loss
+                     config['fm_w'] * l_fm_rec + \
+                     config['vq_w'] * vqvae_loss
+            # G_loss = config['r_w'] * l_x_rec + config['vq_w'] * vqvae_loss
+            # VQ_loss = config['vq_w'] * vqvae_loss
+            '''tf.print('gan: ', config['gan_w'] * l_adv,
+                     ', recon: ', config['r_w'] * l_x_rec,
+                     ', fm: ', config['fm_w'] * l_fm_rec,
+                     ', vq: ', config['vq_w'] * vqvae_loss,
+                     output_stream=sys.stdout)'''
             loss = G_loss * (1.0 / config['batch_size'])
+        # ###
         gen_grad = g_tape.gradient(loss, self.gen.trainable_variables)
+        # ###
         self.opt_gen.apply_gradients(zip(gen_grad, self.gen.trainable_variables))
         return G_loss
             
@@ -96,12 +108,16 @@ class VQVAE_FUNIT(tf.keras.Model):
         xa,la = co_data
         xb,lb = cl_data
         class_xa = self.gen.E_content(xa)
+        # [16, 16, 16, 512]
+        # tf.print(tf.shape(class_xa))
         class_pre_vqresult = self.gen.pre_vqvae(class_xa)
         class_vq = self.gen.vq(class_pre_vqresult, training)
         
         style_xa = self.gen.E_class(xa)
         style_xb = self.gen.E_class(xb)
         
+        # [16 8 8 256]
+        # tf.print(tf.shape(style_xb))
         xt = self.gen.decode(class_vq['quantize'], style_xb) # Translation
         xr = self.gen.decode(class_vq['quantize'], style_xa) # Reconstruction
         
@@ -147,7 +163,7 @@ class VQVAE_FUNIT(tf.keras.Model):
         xa, la = co_data
         xb, lb = cl_data
         return_items = {}
-        xt, xr, xa_gan_feat, xb_gan_feat = self.gen_produce(co_data,cl_data,config,False)
+        xt, xr, xa_gan_feat, xb_gan_feat, _ = self.gen_produce(co_data,cl_data,config,False)
         return_items['xa'] = xa.numpy()
         return_items['xb'] = xb.numpy()
         return_items['xr'] = xr.numpy()

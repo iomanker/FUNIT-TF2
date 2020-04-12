@@ -3,6 +3,7 @@ from tensorflow.python.keras.engine import InputSpec
 
 # https://github.com/deepmind/sonnet/blob/master/sonnet/examples/vqvae_example.ipynb
 # https://github.com/deepmind/sonnet/blob/master/sonnet/python/modules/nets/vqvae.py
+# https://www.tensorflow.org/tutorials/customization/autodiff
 class VectorQuantizer(tf.keras.layers.Layer):
     """Neural Discrete Representation Learning (https://arxiv.org/abs/1711.00937)"""
     
@@ -22,6 +23,8 @@ class VectorQuantizer(tf.keras.layers.Layer):
     def call(self, inputs, training=True):
         # (B,H,W,D)
         input_shape = tf.shape(inputs)
+        # (shape)inputs: [16 16 16 128]
+        # tf.print('(shape)inputs:', input_shape)
         # with tf.control_dependencies(...)
         # (BxHxW, D)
         flat_inputs = tf.reshape(inputs, [-1, self._embedding_dim])
@@ -35,6 +38,8 @@ class VectorQuantizer(tf.keras.layers.Layer):
         encodings = tf.one_hot(encoding_indices, self._num_embeddings) # (BxHxW, K)
         encoding_indices = tf.reshape(encoding_indices, tf.shape(inputs)[:-1]) # (B, H, W)
         quantized = self.quantize(encoding_indices) # NOTICE (B, H, W, D)
+        # (shape)quantized: [16 16 16 128]
+        # tf.print('(shape)quantized:', tf.shape(quantized))
         
         e_latent_loss = tf.reduce_mean((tf.stop_gradient(quantized) - inputs) ** 2)
         q_latent_loss = tf.reduce_mean((quantized - tf.stop_gradient(inputs)) ** 2)
@@ -95,12 +100,16 @@ class AdaptiveInstanceNorm2D(tf.keras.layers.Layer):
     
     def call(self,x,y):
         # x: a content input / y: a style input
+        # [16 16 16 128]
+        # tf.print(tf.shape(x))
         x_mean, x_var = tf.nn.moments(x, axes=[1,2], keepdims=True)
-        y_shape = tf.shape(y)
         
-        # y =  tf.reshape(y,[int(y_shape[0]),1,1,int(y_shape[1])])
-        y = tf.reduce_mean(y,[1,2],keepdims=True)
-        y_mean, y_var = tf.split(y,num_or_size_splits=2,axis=3)
+        
+        # y_shape = tf.shape(y)
+        # y = tf.reshape(y,[int(y_shape[0]),1,1,int(y_shape[1])])
+        # y = tf.reduce_mean(y,[1,2],keepdims=True)
+        # y_mean, y_var = tf.split(y,num_or_size_splits=2,axis=3)
+        y_mean, y_var = tf.nn.moments(y, axes=[1,2], keepdims=True)
         x_inv = tf.math.rsqrt(x_var + self.epsilon)
         x_normalized = (x - x_mean) * x_inv
         return y_var * x_normalized + y_mean
