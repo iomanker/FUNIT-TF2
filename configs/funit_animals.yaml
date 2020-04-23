@@ -30,7 +30,7 @@ gen:
   n_downs_class: 4            # number of downsampling layers in class model encoder
   vqvae:
     num_classes: 119
-    dim_class: 128
+    dim_class: 64
     commitment_cost: 0.25
 dis:
   nf: 64                      # base number of filters

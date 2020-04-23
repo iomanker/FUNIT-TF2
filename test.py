@@ -4,9 +4,8 @@ import os
 import yaml
 import logging
 import cv2
-from containers import FUNIT
+from containers import VQVAE_FUNIT
 from datasets import get_datasets
-from run_step import test_step
 from utils import *
 
 if __name__ == "__main__":
@@ -28,7 +27,7 @@ if __name__ == "__main__":
     config = get_config(opts.config)
     
     # Network
-    networks = FUNIT(config)
+    networks = VQVAE_FUNIT(config)
     logging.info("Loaded Network")
     
     # Checkpoint
@@ -58,7 +57,7 @@ if __name__ == "__main__":
     test_returns = None
     start = opts.start
     for co_data, cl_data in get_test_ds:
-        test_returns = test_step(networks,co_data,cl_data,config)
+        test_returns = networks.test_step(co_data,cl_data,config)
     
         for x in category_img:
             x_path = os.path.join(opts.output_path, x)
