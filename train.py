@@ -26,6 +26,8 @@ if __name__ == "__main__":
                         type=str,
                         default='./training_checkpoints',
                         help="checkpoint path")
+    parser.add_argument('--log_path', type=str,
+                        default="../tensorflow/logs/")
     parser.add_argument('--multigpus',
                         action="store_true")
     parser.add_argument('--test_batch_size',
