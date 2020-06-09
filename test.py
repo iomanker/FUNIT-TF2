@@ -56,16 +56,13 @@ if __name__ == "__main__":
     
     test_returns = None
     start = opts.start
-    for co_data, cl_data in get_test_ds:
+    for idx, (co_data, cl_data) in enumerate(get_test_ds):
         test_returns = networks.test_step(co_data,cl_data,config)
-    
-        for idx,x in enumerate(category_img):
-            x_path = os.path.join(opts.output_path, x)
-            write_images_with_vq((test_returns['xa'],test_returns['xr'],test_returns['map'],test_returns['xt'],test_returns['xb']),
-                                 test_returns['display_list'],
-                                 os.path.join(opts.output_path, 'test_%02d' % (idx)),
-                                 max(config['crop_image_height'], config['crop_image_width']),
-                                 config['gen']['vqvae']['num_classes'])
+        write_images_with_vq((test_returns['xa'],test_returns['xr'],test_returns['map'],test_returns['xt'],test_returns['xb']),
+                              test_returns['display_list'],
+                              os.path.join(opts.output_path, 'test_%02d' % (idx)),
+                              max(config['crop_image_height'], config['crop_image_width']),
+                              config['gen']['vqvae']['num_classes'])
             # write_images_with_vq(images, display_list, filename, square_size=128, classes)
             
             # test_returns[x] = np.uint8(test_returns[x]*127.5+128).clip(0, 255)
