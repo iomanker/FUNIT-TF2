@@ -5,7 +5,7 @@ import yaml
 import logging
 import cv2
 from containers import VQVAE_FUNIT
-from datasets import get_datasets
+from datasets import get_datasets_for_test
 from utils import *
 
 if __name__ == "__main__":
@@ -19,7 +19,7 @@ if __name__ == "__main__":
                         help='configuration file for training and testing')
     parser.add_argument('--ckpt_path', type=str, default='./training_checkpoints')
     parser.add_argument('--output_path', type=str, default='./test_output')
-    parser.add_argument('--num_img', type=int, default=25)
+    parser.add_argument('--num_img', type=int, default=128)
     parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--start', type=int, default=0)
     opts = parser.parse_args()
@@ -38,9 +38,9 @@ if __name__ == "__main__":
     logging.info("Loaded ckpt")
     
     # Datasets
-    datasets = get_datasets(config)
-    test_content_dataset = datasets[2]
-    test_class_dataset = datasets[3]
+    datasets = get_datasets_for_test(config)
+    test_content_dataset = datasets[0]
+    test_class_dataset = datasets[1]
     test_dataset = tf.data.Dataset.zip((test_content_dataset, test_class_dataset))
     get_test_ds = test_dataset.take(opts.num_img).batch(opts.batch_size)
     logging.info("Loaded Datasets")
