@@ -67,7 +67,7 @@ class VQVAE_FUNIT(tf.keras.Model):
         xa, la = co_data
         xb, lb = cl_data
         with tf.GradientTape() as g_tape, tf.GradientTape() as vq_tape:
-            xt_g, xr, xa_gan_feat, xb_gan_feat, vqvae_loss = self.gen_produce(co_data, cl_data, config, True)
+            xt_g, xr, xa_gan_feat, xb_gan_feat, vqvae_loss, _ = self.gen_produce(co_data, cl_data, config, True)
             
             resp_xr_fake, xr_gan_feat = self.dis(xr, la)
             resp_xt_fake, xt_gan_feat = self.dis(xt_g, lb)
@@ -123,7 +123,7 @@ class VQVAE_FUNIT(tf.keras.Model):
         
         _, xa_gan_feat = self.dis(xa,la)
         _, xb_gan_feat = self.dis(xb,lb)
-        return xt, xr, xa_gan_feat, xb_gan_feat, class_vq['loss']
+        return xt, xr, xa_gan_feat, xb_gan_feat, class_vq['loss'], class_vq['encoding_indices']
     
     def dis_train_step(self, x, config):
         co_data, cl_data = x
@@ -163,12 +163,13 @@ class VQVAE_FUNIT(tf.keras.Model):
         xa, la = co_data
         xb, lb = cl_data
         return_items = {}
-        xt, xr, xa_gan_feat, xb_gan_feat, _ = self.gen_produce(co_data,cl_data,config,False)
+        xt, xr, xa_gan_feat, xb_gan_feat, _, encoding_indices = self.gen_produce(co_data,cl_data,config,False)
         return_items['xa'] = xa.numpy()
         return_items['xb'] = xb.numpy()
         return_items['xr'] = xr.numpy()
         return_items['xt'] = xt.numpy()
-        return_items['display_list'] = ['xa','xr','xt','xb']
+        return_items['map'] = encoding_indices.numpy()
+        return_items['display_list'] = ['xa','xr','map','xt','xb']
         return return_items
 
 class Generator(tf.keras.Model):

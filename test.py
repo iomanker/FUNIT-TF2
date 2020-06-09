@@ -48,23 +48,30 @@ if __name__ == "__main__":
     if not os.path.exists(opts.output_path):
         os.makedirs(opts.output_path)
         
-    category_img = ['xa','xr','xt','xb']
-    for x in category_img:
-        x_path = os.path.join(opts.output_path, x)
-        if not os.path.exists(x_path):
-            os.makedirs(x_path)
+    category_img = ['xa','xr','map','xt','xb']
+    # for x in category_img:
+    #     x_path = os.path.join(opts.output_path, x)
+    #     if not os.path.exists(x_path):
+    #         os.makedirs(x_path)
     
     test_returns = None
     start = opts.start
     for co_data, cl_data in get_test_ds:
         test_returns = networks.test_step(co_data,cl_data,config)
     
-        for x in category_img:
+        for idx,x in enumerate(category_img):
             x_path = os.path.join(opts.output_path, x)
-            test_returns[x] = np.uint8(test_returns[x]*127.5+128).clip(0, 255)
-            for idx,img in enumerate(test_returns[x]):
-                img_path = os.path.join(x_path, '%06d.jpg' % (idx + start))
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                cv2.imwrite(img_path, img)
-                logging.info("Saved %s" % img_path)
+            write_images_with_vq((test_returns['xa'],test_returns['xr'],test_returns['map'],test_returns['xt'],test_returns['xb']),
+                                 test_returns['display_list'],
+                                 os.path.join(opts.output_path, 'test_%02d' % (idx)),
+                                 max(config['crop_image_height'], config['crop_image_width']),
+                                 config['gen']['vqvae']['num_classes'])
+            # write_images_with_vq(images, display_list, filename, square_size=128, classes)
+            
+            # test_returns[x] = np.uint8(test_returns[x]*127.5+128).clip(0, 255)
+            # for idx,img in enumerate(test_returns[x]):
+            #     img_path = os.path.join(x_path, '%06d.jpg' % (idx + start))
+            #     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            #     cv2.imwrite(img_path, img)
+            #     logging.info("Saved %s" % img_path)
         start += opts.batch_size
