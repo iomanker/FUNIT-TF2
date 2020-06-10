@@ -62,7 +62,10 @@ def get_tf_dataset(data_folder, data_list,
                 img_processor = default_img_processor,
                 img_transformer = default_img_transformer):
     # set datasets we want.
-    return ImageLabelFilelist(data_folder,data_list).shuffle(num_shuffle).map(img_processor)\
+    dataset =  ImageLabelFilelist(data_folder,data_list)
+    if num_shuffle > 0:
+        dataset = dataset.shuffle(num_shuffle)
+    return dataset.map(img_processor)\
            .map(lambda x,y: (img_transformer(x,crop_size,resize_size),y))
            # Without experimental_distribute_datasets_from_function
            # .batch(batch_size).cache().prefetch(tf.data.experimental.AUTOTUNE)
@@ -86,3 +89,17 @@ def get_datasets(config):
                                         batch_size, crop_size, resize_size, num_shuffle)
     return (train_content_dataset, train_class_dataset,
             test_content_dataset,  test_class_dataset)
+
+def get_datasets_for_test(config):
+    batch_size = config['batch_size']
+    new_size = config['new_size'] # resize_size
+    resize_size = (new_size, new_size)
+    height = config['crop_image_height']
+    width = config['crop_image_width']
+    crop_size = (height,width)
+    
+    test_content_dataset = get_tf_dataset(config['data_folder_test'], config['data_list_selected_test_content'],
+                                          batch_size, crop_size, resize_size, 0)
+    test_class_dataset = get_tf_dataset(config['data_folder_test'], config['data_list_selected_test_style'],
+                                        batch_size, crop_size, resize_size, 0)
+    return (test_content_dataset,  test_class_dataset)
