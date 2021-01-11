@@ -1,7 +1,7 @@
 import tensorflow as tf
 from layers import *
 
-class Conv2DBlock(tf.keras.Model):
+class Conv2DBlock(tf.keras.layers.Layer):
     def __init__(self, n_filters, ks, st, padding=0, pad_type='zero', use_bias=True, norm="", activation='relu', activation_first=False):
         super(Conv2DBlock, self).__init__()
         
@@ -51,21 +51,20 @@ class Conv2DBlock(tf.keras.Model):
             if self.activation:
                 x = self.activation(x)
         return x
-    
-class ResnetIdentityBlock(tf.keras.Model):
+
+class ResnetIdentityBlock(tf.keras.layers.Layer):
     def __init__(self,n_filters, norm='bn', activation='relu', pad_type='zero'):
         super(ResnetIdentityBlock, self).__init__()
         self.norm = norm
-        self.model = tf.keras.Sequential()
-        for _ in range(2):
-            self.model.add(Conv2DBlock(n_filters, 3, 1, 1, pad_type, norm=norm, activation=activation, ))
+        self.layers = [Conv2DBlock(n_filters, 3, 1, 1, pad_type, norm=norm, activation=activation) for _ in range(2)]
     def call(self,x):
         res = x
-        out = self.model(x)
-        out += res
-        return out
-    
-class PreActiResBlock(tf.keras.Model):
+        for l in self.layers:
+            x = l(x)
+        x += res
+        return x
+
+class PreActiResBlock(tf.keras.layers.Layer):
     def __init__(self,in_dim,out_dim,hidden_dim=None,
                  activation='relu',norm='none'):
         super(PreActiResBlock,self).__init__()
@@ -90,12 +89,12 @@ class PreActiResBlock(tf.keras.Model):
         x = self.conv_1(x)
         out = x + x_s
         return out
-    
-class LinearBlock(tf.keras.Model):
+
+class LinearBlock(tf.keras.layers.Layer):
     def __init__(self,out_dim,norm='none',activation='relu'):
         super(LinearBlock,self).__init__()
         use_bias = True
-        self.fc = tf.keras.layers.Dense(out_dim,use_bias=use_bias)
+        self.fc = tf.keras.layers.Conv2D(out_dim,1,use_bias=use_bias)
         
         if activation == 'relu':
             self.activation = tf.keras.activations.relu
@@ -111,8 +110,8 @@ class LinearBlock(tf.keras.Model):
         if self.activation:
             out = self.activation(out)
         return out
-    
-class Conv2D_AdaINBlock(tf.keras.Model):
+
+class Conv2D_AdaINBlock(tf.keras.layers.Layer):
     def __init__(self, n_filters, ks, st, padding=0, pad_type='zero', use_bias=True, activation='relu', activation_first=False):
         super(Conv2D_AdaINBlock, self).__init__()
         
@@ -152,8 +151,8 @@ class Conv2D_AdaINBlock(tf.keras.Model):
             if self.activation:
                 x = self.activation(x)
         return x, y
-    
-class Res_AdaINBlock(tf.keras.Model):
+
+class Res_AdaINBlock(tf.keras.layers.Layer):
     def __init__(self,n_filters, activation='relu', pad_type='zero'):
         super(Res_AdaINBlock, self).__init__()
         self.norm = 'adain'

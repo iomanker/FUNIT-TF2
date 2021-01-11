@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tensorflow.python.keras.engine import InputSpec
 
 # https://github.com/tensorflow/examples/blob/master/tensorflow_examples/models/pix2pix/pix2pix.py#L161-L185
 class InstanceNormalization(tf.keras.layers.Layer):
@@ -53,7 +52,7 @@ class ReflectionPadding2D(tf.keras.layers.Layer):
     def __init__(self, padding=(1,1), **kwargs):
         super(ReflectionPadding2D, self).__init__(**kwargs)
         self.padding = tuple(padding)
-        self.input_spec = [InputSpec(ndim=4)]
+        self.input_spec = [tf.keras.layers.InputSpec(ndim=4)]
         
     def get_output_shape_for(self, s):
         # CHANNELS_LAST

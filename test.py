@@ -6,8 +6,21 @@ import logging
 import cv2
 from containers import FUNIT
 from datasets import get_datasets
-from run_step import test_step
 from utils import *
+
+def save_result(network, dataset, key_str, save_root, display_max, isTrain = False):
+    filename = "train" if isTrain else "test"
+    filename = filename + "_%s_%02d"
+    for idx, (co_data, cl_data) in dataset.enumerate():
+        return_dict = network.test_step(co_data, cl_data)
+        display_list = []
+        display_imgs = []
+        for key in return_dict:
+            display_list.append(key)
+            display_imgs.append(return_dict[key])
+        write_images(display_imgs, display_list,
+                     os.path.join(save_root, filename % (key_str, idx)),
+                     display_max)
 
 if __name__ == "__main__":
     logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
@@ -26,46 +39,28 @@ if __name__ == "__main__":
     opts = parser.parse_args()
     
     config = get_config(opts.config)
+    DISPLAY_MAX = max(config['crop_image_height'], config['crop_image_width'])
     
     # Network
-    networks = FUNIT(config)
+    network = FUNIT(config)
     logging.info("Loaded Network")
     
     # Checkpoint
     checkpoint_dir = opts.ckpt_path
     gen_ckpt_prefix = os.path.join(checkpoint_dir, "gen_ckpt")
-    gen_ckpt = tf.train.Checkpoint(optimizer=networks.opt_gen, net=networks.gen)
+    gen_ckpt = tf.train.Checkpoint(optimizer=network.opt_gen, net=network.gen)
     gen_ckpt.restore(tf.train.latest_checkpoint(gen_ckpt_prefix))
     logging.info("Loaded ckpt")
     
     # Datasets
-    datasets = get_datasets(config)
-    test_content_dataset = datasets[2]
-    test_class_dataset = datasets[3]
-    test_dataset = tf.data.Dataset.zip((test_content_dataset, test_class_dataset))
-    get_test_ds = test_dataset.take(opts.num_img).batch(opts.batch_size)
+    datasets = get_datasets(config, seed=1234)
+    train_dataset = tf.data.Dataset.zip((datasets[0], datasets[1]))
+    test_dataset = tf.data.Dataset.zip((datasets[2], datasets[3]))
+    train_dataset = train_dataset.take(opts.num_img).batch(opts.batch_size)
+    test_dataset = test_dataset.take(opts.num_img).batch(opts.batch_size)
     logging.info("Loaded Datasets")
     
     if not os.path.exists(opts.output_path):
         os.makedirs(opts.output_path)
-        
-    category_img = ['xa','xr','xt','xb']
-    for x in category_img:
-        x_path = os.path.join(opts.output_path, x)
-        if not os.path.exists(x_path):
-            os.makedirs(x_path)
-    
-    test_returns = None
-    start = opts.start
-    for co_data, cl_data in get_test_ds:
-        test_returns = test_step(networks,co_data,cl_data,config)
-    
-        for x in category_img:
-            x_path = os.path.join(opts.output_path, x)
-            test_returns[x] = np.uint8(test_returns[x]*127.5+128).clip(0, 255)
-            for idx,img in enumerate(test_returns[x]):
-                img_path = os.path.join(x_path, '%06d.jpg' % (idx + start))
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                cv2.imwrite(img_path, img)
-                logging.info("Saved %s" % img_path)
-        start += opts.batch_size
+    save_result(network, train_dataset, "test", opts.output_path, DISPLAY_MAX, True)
+    save_result(network, test_dataset, "test", opts.output_path, DISPLAY_MAX, False)
