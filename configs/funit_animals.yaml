@@ -34,11 +34,12 @@ dis:
 
 # data options
 num_workers: 0
-batch_size: 64
+batch_size: 16
 new_size: 140                 # first resize the shortest image side to this size
+crop_fraction: 1
 crop_image_height: 128        # random crop image of this height
 crop_image_width: 128         # random crop image of this width
-data_folder_train: ../FUNIT/datasets/animals/
-data_list_train: ../FUNIT/datasets/animals_list_train.txt
-data_folder_test: ../FUNIT/datasets/animals/
-data_list_test: ../FUNIT/datasets/animals_list_test.txt
+data_folder_train: ../Datasets/FUNIT_Animal_Dataset/datasets/animals/
+data_list_train: ../Datasets/FUNIT_Animal_Dataset/datasets/animals_list_train.txt
+data_folder_test: ../Datasets/FUNIT_Animal_Dataset/datasets/animals/
+data_list_test: ../Datasets/FUNIT_Animal_Dataset/datasets/animals_list_test.txt

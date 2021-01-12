@@ -1,7 +1,7 @@
 # FUNIT-TF2: Few-Shot Unsupervised Image-to-Image Translation in Tensorflow 2
 ![IntroImage](https://github.com/iomanker/FUNIT-TF2/blob/master/public/intro_image.png)
 ## Update
-* (2021/01/11) Here is a big changed update, and making more pythonic. This also support Tensorflow 2.3 now.
+* (2021/01/11) Here is a big changed update, and making more pythonic. This also supports Tensorflow 2.3 now.
 ## Installation
 * Clone: `git clone https://github.com/iomanker/FUNIT-TF2.git`
 * Install CUDA10.0+, cuDNN7.5

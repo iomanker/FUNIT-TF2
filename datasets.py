@@ -38,10 +38,10 @@ class ImageLabelFilelist(tf.data.Dataset):
                 filelist_reader=default_filelist_reader):
         img_list = filelist_reader(list_filename)
         # NOTICE: You need to check location of class name after split by '/'
-        classes = sorted(list(set([path.split('/')[1] for path in img_list])))
+        classes = sorted(list(set([path.split('/')[0] for path in img_list])))
         classes_to_idx = {classes[i]: i for i in range(len(classes))}
         # NOTICE: You need to check location of class name after split by '/'
-        idx_list = [classes_to_idx[l.split('/')[1]] for l in img_list]
+        idx_list = [classes_to_idx[l.split('/')[0]] for l in img_list]
         
         print("Data Loader")
         print("\tRoot: %s" % img_root)
