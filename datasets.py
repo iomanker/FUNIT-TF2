@@ -65,20 +65,20 @@ def get_tf_dataset(data_folder, data_list,
         
     return dataset.map(set_img_transformer).repeat()
 
-def get_datasets(config, seed=None):
+def get_datasets(config, content_seed=None, style_seed=None):
     batch_size = config['batch_size']
     new_size = config['new_size'] # resize_size
     resize_size = (new_size, new_size)
     crop_fraction = config['crop_fraction']
     num_shuffle = 100000
     train_content_dataset = get_tf_dataset(config['data_folder_train'], config['data_list_train'],
-                                           batch_size, crop_fraction, resize_size, num_shuffle, seed=seed)
+                                           batch_size, crop_fraction, resize_size, num_shuffle, seed=content_seed)
     train_class_dataset = get_tf_dataset(config['data_folder_train'], config['data_list_train'],
-                                         batch_size, crop_fraction, resize_size, num_shuffle, seed=seed)
+                                         batch_size, crop_fraction, resize_size, num_shuffle, seed=style_seed)
     
     test_content_dataset = get_tf_dataset(config['data_folder_test'], config['data_list_test'],
-                                          batch_size, crop_fraction, resize_size, num_shuffle, seed=seed)
+                                          batch_size, crop_fraction, resize_size, num_shuffle, seed=content_seed)
     test_class_dataset = get_tf_dataset(config['data_folder_test'], config['data_list_test'],
-                                        batch_size, crop_fraction, resize_size, num_shuffle, seed=seed)
+                                        batch_size, crop_fraction, resize_size, num_shuffle, seed=style_seed)
     return (train_content_dataset, train_class_dataset,
             test_content_dataset,  test_class_dataset)

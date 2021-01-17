@@ -3,7 +3,6 @@ import argparse
 import os
 import yaml
 import logging
-import cv2
 from containers import FUNIT
 from datasets import get_datasets
 from utils import *
@@ -53,7 +52,7 @@ if __name__ == "__main__":
     logging.info("Loaded ckpt")
     
     # Datasets
-    datasets = get_datasets(config, seed=1234)
+    datasets = get_datasets(config, content_seed=1234, style_seed=5678)
     train_dataset = tf.data.Dataset.zip((datasets[0], datasets[1]))
     test_dataset = tf.data.Dataset.zip((datasets[2], datasets[3]))
     train_dataset = train_dataset.take(opts.num_img).batch(opts.batch_size)
