@@ -21,8 +21,9 @@ class ClassEncoder(tf.keras.layers.Layer):
                                        norm=norm,
                                        activation=activation,
                                        pad_type=pad_type))
-        self.layers.append(tf.keras.layers.AveragePooling2D(1))
-        self.layers.append(tf.keras.layers.Conv2D(latent_dim, 1, 1, 'valid'))
+        self.layers.append(tf.keras.layers.GlobalAveragePooling2D())
+        self.layers.append(tf.keras.layers.Dense(latent_dim,
+                                                 kernel_initializer=tf.keras.initializers.he_normal()))
         self.output_filters = n_filters
     def call(self, x):
         for l in self.layers:
@@ -58,6 +59,7 @@ class Decoder(tf.keras.layers.Layer):
     def __init__(self,ups,n_res,n_filters,out_dim,activation,pad_type, **kwargs):
         super(Decoder,self).__init__(**kwargs)
         self.AdaIN_layers = []
+        self.n_filters = n_filters
         # block.model.layers[0].model.layers[0].norm =(address) block.adaIN[0]
         for _ in range(n_res):
             self.AdaIN_layers.append(Res_AdaINBlock(n_filters,
@@ -80,8 +82,8 @@ class Decoder(tf.keras.layers.Layer):
                                    activation='tanh',
                                    pad_type=pad_type))
     def call(self,x,y):
-        for l in self.AdaIN_layers:
-            x, _ = l(x,y)
+        for l,l_y in zip(self.AdaIN_layers, tf.split(y,num_or_size_splits=2,axis=1)):
+            x, _ = l(x,l_y)
         for l in self.layers:
             x = l(x)
         return x

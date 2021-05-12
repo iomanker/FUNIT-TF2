@@ -1,22 +1,15 @@
 # FUNIT-TF2: Few-Shot Unsupervised Image-to-Image Translation in Tensorflow 2
 ![IntroImage](https://github.com/iomanker/FUNIT-TF2/blob/master/public/intro_image.png)
 ## Update
+* (2021/05/12) Found Tensorflow 2.3 has Distributed Training problem, update to Tensorflow 2.4.0
 * (2021/01/11) Here is a big changed update, and making more pythonic. This also supports Tensorflow 2.3 now.
 ## Installation
 * Clone: `git clone https://github.com/iomanker/FUNIT-TF2.git`
-* Install CUDA10.0+, cuDNN7.5
+* Install CUDA11.0+, cuDNN8.0+
 * Install required python pakcages
-    * `pip install tensorflow-gpu`
+    * `pip install tensorflow-gpu==2.4.0`
     * `pip install matplotlib`
     * `pip install pyyaml`
-## Hardware & Computation Comparison
-| List            | FUNIT                       | FUNIT-TF2               |
-| --------------- | --------------------------- | ----------------------- |
-| Hardware        | **4** Nvidia V100 32GB GPUs | Same as the former      |
-| Workstation     | Acer-AiForge x NCTU         | Same as the former      |
-| Library Version | Pytorch 1.4.0               | Tensorflow 2.x          |
-| Dataset         | ImageNet Animal Dataset     | ImageNet Animal Dataset |
-| Iteration Time  | 4.2+ s                      | 1.0+ s                  |
 
 ## Dataset Preparation
 This step is followed by original FUNIT. Please click [here](https://github.com/NVlabs/FUNIT/#dataset-preparation).

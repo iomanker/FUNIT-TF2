@@ -18,7 +18,6 @@ class Conv2DBlock(tf.keras.layers.Layer):
             self.norm = tf.keras.layers.BatchNormalization()
         elif norm == 'in':
             self.norm = InstanceNormalization()
-            self.norm = None
         elif norm == 'adain':
             self.norm = AdaptiveInstanceNorm2D(norm_dim)
         else:
@@ -29,13 +28,15 @@ class Conv2DBlock(tf.keras.layers.Layer):
         if activation == 'relu':
             self.activation = tf.keras.activations.relu
         elif activation == 'leakyrelu':
-            self.activation = tf.keras.layers.LeakyReLU()
+            self.activation = tf.keras.layers.LeakyReLU(0.2)
         elif activation == 'tanh':
             self.activation = tf.keras.activations.tanh
         else:
             self.activation = None
         
-        self.conv = tf.keras.layers.Conv2D(n_filters, ks, st, 'valid', use_bias=use_bias)
+        self.conv = tf.keras.layers.Conv2D(n_filters, ks, st, 'valid', use_bias=use_bias,
+                                           kernel_initializer=tf.keras.initializers.he_normal()) #,
+                                           # kernel_regularizer=tf.keras.regularizers.l2(0.0001))
         
     def call(self,x):
         if self.activation_first:
@@ -56,7 +57,9 @@ class ResnetIdentityBlock(tf.keras.layers.Layer):
     def __init__(self,n_filters, norm='bn', activation='relu', pad_type='zero'):
         super(ResnetIdentityBlock, self).__init__()
         self.norm = norm
-        self.layers = [Conv2DBlock(n_filters, 3, 1, 1, pad_type, norm=norm, activation=activation) for _ in range(2)]
+        self.layers = []
+        self.layers.append(Conv2DBlock(n_filters, 3, 1, 1, pad_type, norm=norm, activation=activation))
+        self.layers.append(Conv2DBlock(n_filters, 3, 1, 1, pad_type, norm=norm, activation='none'))
     def call(self,x):
         res = x
         for l in self.layers:
@@ -75,7 +78,7 @@ class PreActiResBlock(tf.keras.layers.Layer):
         self.hidden_dim = min(in_dim,out_dim) if hidden_dim is None else hidden_dim
         self.conv_0 = Conv2DBlock(self.hidden_dim,3,1,
                                   padding=1, pad_type='reflect', norm=norm,
-                                  activation=activation, activation_first=True)
+                                  activation='none', activation_first=True)
         self.conv_1 = Conv2DBlock(self.out_dim,3,1,
                                   padding=1, pad_type='reflect', norm=norm,
                                   activation=activation, activation_first=True)
@@ -84,22 +87,29 @@ class PreActiResBlock(tf.keras.layers.Layer):
                                       activation='none',use_bias=False)
             
     def call(self,x):
-        x_s = self.conv_s(x) if self.learned_shortcut else x
-        x = self.conv_0(x)
-        x = self.conv_1(x)
-        out = x + x_s
+        if self.learned_shortcut:
+            x_s = self.conv_s(x)
+            x = tf.keras.layers.LeakyReLU(0.2)(x)
+        else:
+            x = tf.keras.layers.LeakyReLU(0.2)(x)
+            x_s = x
+        dx = self.conv_0(x)
+        dx = self.conv_1(dx)
+        out = dx + x_s
         return out
 
 class LinearBlock(tf.keras.layers.Layer):
     def __init__(self,out_dim,norm='none',activation='relu'):
         super(LinearBlock,self).__init__()
         use_bias = True
-        self.fc = tf.keras.layers.Conv2D(out_dim,1,use_bias=use_bias)
+        self.fc = tf.keras.layers.Dense(out_dim,use_bias=use_bias,
+                                        kernel_initializer=tf.keras.initializers.he_normal()) # ,
+                                        # kernel_regularizer=tf.keras.regularizers.l2(0.0001))
         
         if activation == 'relu':
             self.activation = tf.keras.activations.relu
         elif activation == 'leakyrelu':
-            self.activation = tf.keras.layers.LeakyReLU
+            self.activation = tf.keras.layers.LeakyReLU(0.2)
         elif activation == 'tanh':
             self.activation = tf.keras.activations.tanh
         else:
@@ -131,13 +141,15 @@ class Conv2D_AdaINBlock(tf.keras.layers.Layer):
         if activation == 'relu':
             self.activation = tf.keras.activations.relu
         elif activation == 'leakyrelu':
-            self.activation = tf.keras.layers.LeakyReLU()
+            self.activation = tf.keras.layers.LeakyReLU(0.2)
         elif activation == 'tanh':
             self.activation = tf.keras.activations.tanh
         else:
             self.activation = None
         
-        self.conv = tf.keras.layers.Conv2D(n_filters, ks, st, 'valid', use_bias=use_bias)
+        self.conv = tf.keras.layers.Conv2D(n_filters, ks, st, 'valid', use_bias=use_bias,
+                                           kernel_initializer=tf.keras.initializers.he_normal()) #,
+                                           # kernel_regularizer=tf.keras.regularizers.l2(0.0001))
         
     def call(self,x,y):
         if self.activation_first:
@@ -156,12 +168,11 @@ class Res_AdaINBlock(tf.keras.layers.Layer):
     def __init__(self,n_filters, activation='relu', pad_type='zero'):
         super(Res_AdaINBlock, self).__init__()
         self.norm = 'adain'
-        self.model = []
-        for _ in range(2):
-            self.model.append(Conv2D_AdaINBlock(n_filters, 3, 1, 1, pad_type, activation=activation))
+        self.model = [Conv2D_AdaINBlock(n_filters, 3, 1, 1, pad_type, activation=activation),
+                      Conv2D_AdaINBlock(n_filters, 3, 1, 1, pad_type, activation='none')]
     def call(self,x,y):
-        for layer in self.model:
-            res = x
-            x, _ = layer(x,y)
-            x += res
+        res = x
+        for layer, l_y in zip(self.model, tf.split(y,num_or_size_splits=2,axis=1)):
+            x, _ = layer(x,l_y)
+        x += res
         return x, y

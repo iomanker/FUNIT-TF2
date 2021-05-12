@@ -23,7 +23,7 @@ class Generator(tf.keras.layers.Layer):
                                     n_filters=n_features,
                                     norm='none',activation='relu',pad_type='reflect')
         # Adaptively computing using Zy
-        self.mlp = MLP(out_dim=self.E_content.output_filters*2,
+        self.mlp = MLP(out_dim=self.E_content.output_filters*2*(n_res_blocks*2),
                        dim=n_features_mlp,
                        n_blk=n_mlp_blocks, activation='relu')
         # Decoder
@@ -43,7 +43,6 @@ class Generator(tf.keras.layers.Layer):
         content_xa = self.E_content(xa)
         
         style_xa = self.E_class(xa)
-        
         style_xb = self.E_class(xb)
         
         xt = self.decode(content_xa, style_xb) # Translation
@@ -67,6 +66,7 @@ class Discriminator(tf.keras.layers.Layer):
             self.layers.append(PreActiResBlock(nf,nf,None,'leakyrelu','none'))
             self.layers.append(PreActiResBlock(nf,nf_out,None,'leakyrelu','none'))
             self.layers.append(ReflectionPadding2D((1,1)))
+            # self.layers.append(tf.keras.layers.ZeroPadding2D((1,1)))
             self.layers.append(tf.keras.layers.AveragePooling2D(pool_size=3,strides=2))
             nf = min(nf * 2, 1024)
         nf_out = min(nf * 2, 1024)
@@ -74,14 +74,14 @@ class Discriminator(tf.keras.layers.Layer):
         self.layers.append(PreActiResBlock(nf,nf_out,None,'leakyrelu','none'))
         self.last_layer = Conv2DBlock(n_filters=n_classes, 
                                       ks=1, st=1,
-                                      norm="none", activation='leakyrelu', activation_first=True)
+                                      norm="none", activation='none', activation_first=True)
         
     def call(self,x,y):
         # assert tf.shape(x)[0] == tf.shape(y)[0]
         feat = x
         for l in self.layers:
-            newfeat = l(feat)
-            feat = newfeat
+            feat = l(feat)
+        feat = tf.keras.layers.LeakyReLU(0.2)(feat)
         out = self.last_layer(feat)
         y_idx = tf.cast(tf.range(0,tf.shape(y)[0]), tf.int32)
         y_idx = tf.stack([y_idx, tf.cast(y, tf.int32)], axis=1)
@@ -109,40 +109,48 @@ class FUNIT(tf.keras.Model):
         self.dict_w = {'gan': config['gan_w'], 'rec': config['r_w'], 'fm': config['fm_w']}
         
         self.gen = Generator(gen_nfs, gen_downs, gen_blocks, gen_latent_dim)
+        self.gen_test = Generator(gen_nfs, gen_downs, gen_blocks, gen_latent_dim)
         self.dis = Discriminator(dis_n_features, dis_n_res_blocks, dis_n_classes)
-        self.opt_gen = tf.keras.optimizers.RMSprop(learning_rate=config['lr_gen'])
-        self.opt_dis = tf.keras.optimizers.RMSprop(learning_rate=config['lr_dis'])
+        self.opt_gen = tf.keras.optimizers.RMSprop(learning_rate=config['lr_gen'], rho=0.99, epsilon=1e-8)
+        self.opt_dis = tf.keras.optimizers.RMSprop(learning_rate=config['lr_dis'], rho=0.99, epsilon=1e-8)
+        # self.opt_gen = tf.keras.optimizers.Adam(learning_rate=config['lr_gen'], epsilon=1e-8)
+        # self.opt_dis = tf.keras.optimizers.Adam(learning_rate=config['lr_dis'], epsilon=1e-8)
+        # self.dis_gs = tf.keras.layers.GaussianNoise(0)
         
         self.GLOBAL_BATCH_SIZE = config['batch_size']
-        self.BATCH_SIZE = config['batch_size']
+        self.build((config['crop_image_height'],config['crop_image_width']))
+        
+    def build(self, size=(128,128)):
+        co_data = (tf.random.normal((1,size[0],size[1],3)), tf.convert_to_tensor(np.array([0])))
+        cl_data = (tf.random.normal((1,size[0],size[1],3)), tf.convert_to_tensor(np.array([0])))
+        self.gen(co_data, cl_data)
+        self.gen_test(co_data, cl_data)
+        self.gen_test.set_weights(self.gen.get_weights())
         
     @tf.function
     def distributed_train_step(self, dataset_inputs, strategy):
         co_data, cl_data = dataset_inputs
-        # tf.__version__ must more than "2.0.0"
-        if int(tf.__version__.split('.')[1]) < 3:
-            per_replica_G_losses, per_replica_D_losses, \
-            = strategy.experimental_run_v2(self.train_step, args=(co_data, cl_data))
-        else:
-            # tf.__version__ >= 2.3.0
-            per_replica_G_losses, per_replica_D_losses, \
-            = strategy.run(self.train_step, args=(co_data, cl_data))
+        
+        # Tensorflow 2.4.0
+        per_replica_G_losses, per_replica_D_losses, \
+        = strategy.run(self.train_step, args=(co_data, cl_data))
         G_loss = strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_G_losses, axis=None)
-        G_loss = G_loss / self.GLOBAL_BATCH_SIZE
         D_loss = strategy.reduce(tf.distribute.ReduceOp.SUM, per_replica_D_losses, axis=None)
-        D_loss = D_loss / self.GLOBAL_BATCH_SIZE
         return G_loss, D_loss
     
     def train_step(self, co_data, cl_data):
+        D_loss, _ = self.dis_update(co_data, cl_data)
+        G_loss, _ = self.gen_update(co_data, cl_data)
+        return G_loss, D_loss
+    
+    def gen_update(self, co_data, cl_data):
         xa, la = co_data
         xb, lb = cl_data
-        
-        with tf.GradientTape() as g_tape, tf.GradientTape() as d_tape:
+        with tf.GradientTape() as g_tape:
             xt, xr = self.gen(co_data, cl_data)
             
-            ## tf.print("before adv, rec: ", tf.reduce_mean(recon_loss(xr, xa)))
             _, xa_gan_feat = self.dis(xa,la)
-            resp_real, xb_gan_feat = self.dis(xb,lb)
+            _, xb_gan_feat = self.dis(xb,lb)
             resp_xr_fake, xr_gan_feat = self.dis(xr,la)
             resp_xt_fake, xt_gan_feat = self.dis(xt,lb)
             
@@ -150,28 +158,58 @@ class FUNIT(tf.keras.Model):
             l_adv_t = GANloss.gen_loss(resp_xt_fake, lb)
             l_adv_r = GANloss.gen_loss(resp_xr_fake, la)
             l_adv = 0.5 * (l_adv_t + l_adv_r)
+            l_adv = tf.nn.compute_average_loss(l_adv, global_batch_size=self.GLOBAL_BATCH_SIZE)
             
-            l_x_rec = tf.reduce_mean(recon_loss(xr, xa))
+            l_x_rec = recon_loss(xr, xa)
+            l_x_rec = tf.nn.compute_average_loss(l_x_rec, global_batch_size=self.GLOBAL_BATCH_SIZE)
             
-            l_c_rec = tf.reduce_mean(featmatch_loss(xr_gan_feat, xa_gan_feat))
-            l_m_rec = tf.reduce_mean(featmatch_loss(xt_gan_feat, xb_gan_feat))
+            l_c_rec = featmatch_loss(xr_gan_feat, xa_gan_feat)
+            l_m_rec = featmatch_loss(xt_gan_feat, xb_gan_feat)
             l_fm_rec = l_c_rec + l_m_rec
+            l_fm_rec = tf.nn.compute_average_loss(l_fm_rec, global_batch_size=self.GLOBAL_BATCH_SIZE)
             
             G_loss = self.dict_w['gan'] * l_adv + self.dict_w['rec'] * l_x_rec + self.dict_w['fm'] * l_fm_rec
-    
+            # print("G_loss: ", G_loss.numpy())
+            # print("  GAN: ", (self.dict_w['gan'] * l_adv).numpy(),
+            #       "Rec: ", (self.dict_w['rec'] * l_x_rec).numpy(),
+            #       "Feat xr: ", (self.dict_w['fm'] * l_c_rec).numpy(),
+            #       "Feat xt: ", (self.dict_w['fm'] * l_m_rec).numpy())
+        gen_grad = g_tape.gradient(G_loss, self.gen.trainable_variables)
+        # Weight Decay
+        for i in range(len(gen_grad)):
+            gen_grad[i] = gen_grad[i] + (0.0001 * self.gen.trainable_variables[i])
+        self.opt_gen.apply_gradients(zip(gen_grad, self.gen.trainable_variables))
+        return G_loss, gen_grad
+        
+    def dis_update(self, co_data, cl_data):
+        xa, la = co_data
+        xb, lb = cl_data
+        with tf.GradientTape() as d_tape:
+            xt, _ = self.gen(co_data, cl_data)
+            resp_real, _ = self.dis(xb,lb)
+            resp_xt_fake, _ = self.dis(tf.stop_gradient(xt),lb)
+            
             # Discriminator losses
             l_real = GANloss.dis_loss(resp_real, lb, 'real')
             l_fake = GANloss.dis_loss(resp_xt_fake, lb, 'fake')
-            l_reg = gradient_penalty(self.dis, xb, lb)
+            l_reg = gradient_penalty(self.dis, xb, lb, self.GLOBAL_BATCH_SIZE)
             
-            D_loss = self.dict_w['gan'] * l_real + self.dict_w['gan'] * l_fake + 10 * l_reg
-        
-        gen_grad = g_tape.gradient(G_loss, self.gen.trainable_variables)
+            l_real = self.dict_w['gan'] * l_real
+            l_real = tf.nn.compute_average_loss(l_real, global_batch_size=self.GLOBAL_BATCH_SIZE)
+            l_fake = self.dict_w['gan'] * l_fake
+            l_fake = tf.nn.compute_average_loss(l_fake, global_batch_size=self.GLOBAL_BATCH_SIZE)
+            l_reg = 10 * l_reg
+            # l_reg = tf.nn.compute_average_loss(l_reg, global_batch_size=self.GLOBAL_BATCH_SIZE)
+            
+            D_loss = l_real + l_reg + l_fake
+            # print("D_loss: ", D_loss)
+            # tf.print('  Real:', l_real.numpy(), ' Fake:', l_fake.numpy(), 'Penalty:', l_reg.numpy())
         dis_grad = d_tape.gradient(D_loss, self.dis.trainable_variables)
-        self.opt_gen.apply_gradients(zip(gen_grad, self.gen.trainable_variables))
+        # Weight Decay
+        for i in range(len(dis_grad)):
+            dis_grad[i] = dis_grad[i] + (0.0001 * self.dis.trainable_variables[i])
         self.opt_dis.apply_gradients(zip(dis_grad, self.dis.trainable_variables))
-        
-        return G_loss, D_loss
+        return D_loss, dis_grad
     
     def test_step(self, co_data, cl_data):
         xa, la = co_data
@@ -183,3 +221,32 @@ class FUNIT(tf.keras.Model):
         return_items['xr'] = xr.numpy()
         return_items['xt'] = xt.numpy()
         return return_items
+    
+    def test_EMA_step(self, co_data, cl_data):
+        xa, la = co_data
+        xb, lb = cl_data
+        return_items = {}
+        xt, xr = self.gen_test(co_data, cl_data)
+        return_items['xa'] = xa.numpy()
+        return_items['xb'] = xb.numpy()
+        return_items['xr'] = xr.numpy()
+        return_items['xt'] = xt.numpy()
+        return return_items
+    
+    def call(self, co_data, cl_data):
+        xa, la = co_data
+        xb, lb = cl_data
+        _, _ = self.gen(co_data, cl_data)
+        _, _ = self.dis(xa, la)
+    
+    def compute_style_code(self, style_batch):
+        # style_batch = [1, 128, 128, 3]
+        code_style_batch = self.gen.E_class(style_batch)
+        return code_style_batch
+    
+    def translate_simple(self, content_image, class_code):
+        # content_image = [1, 128, 128, 3]
+        # class_code = [1, 64]
+        content_fea = self.gen.E_content(content_image)
+        xt = self.gen.decode(content_fea, class_code)
+        return xt
