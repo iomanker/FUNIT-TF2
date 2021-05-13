@@ -120,11 +120,12 @@ if __name__ == "__main__":
     gen_test_ckpt_manager = tf.train.CheckpointManager(gen_test_ckpt, gen_test_ckpt_prefix, max_to_keep=2)
     dis_ckpt_manager = tf.train.CheckpointManager(dis_ckpt, dis_ckpt_prefix, max_to_keep=2)
         
-    if opts.resume:
-        print("resume ON")
-        gen_ckpt.restore(gen_ckpt_manager.latest_checkpoint)
-        gen_test_ckpt.restore(gen_test_ckpt_manager.latest_checkpoint)
-        dis_ckpt.restore(dis_ckpt_manager.latest_checkpoint)
+    with strategy.scope():
+        if opts.resume:
+            print("resume ON")
+            gen_ckpt.restore(gen_ckpt_manager.latest_checkpoint)
+            gen_test_ckpt.restore(gen_test_ckpt_manager.latest_checkpoint)
+            dis_ckpt.restore(dis_ckpt_manager.latest_checkpoint)
     
     def train_ds_fn(input_context):
         batch_size = input_context.get_per_replica_batch_size(network.GLOBAL_BATCH_SIZE)

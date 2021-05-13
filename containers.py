@@ -113,9 +113,6 @@ class FUNIT(tf.keras.Model):
         self.dis = Discriminator(dis_n_features, dis_n_res_blocks, dis_n_classes)
         self.opt_gen = tf.keras.optimizers.RMSprop(learning_rate=config['lr_gen'], rho=0.99, epsilon=1e-8)
         self.opt_dis = tf.keras.optimizers.RMSprop(learning_rate=config['lr_dis'], rho=0.99, epsilon=1e-8)
-        # self.opt_gen = tf.keras.optimizers.Adam(learning_rate=config['lr_gen'], epsilon=1e-8)
-        # self.opt_dis = tf.keras.optimizers.Adam(learning_rate=config['lr_dis'], epsilon=1e-8)
-        # self.dis_gs = tf.keras.layers.GaussianNoise(0)
         
         self.GLOBAL_BATCH_SIZE = config['batch_size']
         self.build((config['crop_image_height'],config['crop_image_width']))
