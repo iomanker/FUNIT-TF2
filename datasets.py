@@ -84,7 +84,7 @@ def get_datasets(config, content_seed=None, style_seed=None):
     batch_size = config['batch_size']
     new_size = config['new_size']
     resize_size = (new_size, new_size)
-    crop_size = (config['crop_image_height'], config['crop_image_weight'], 3)
+    crop_size = (config['crop_image_height'], config['crop_image_width'], 3)
     num_shuffle = 100000
     train_content_dataset = get_tf_dataset(config['data_folder_train'], config['data_list_train'],
                                            batch_size, crop_size, resize_size, True, num_shuffle, seed=content_seed)
