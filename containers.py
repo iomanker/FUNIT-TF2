@@ -115,6 +115,7 @@ class FUNIT(tf.keras.Model):
         self.opt_dis = tf.keras.optimizers.RMSprop(learning_rate=config['lr_dis'], rho=0.99, epsilon=1e-8)
         
         self.GLOBAL_BATCH_SIZE = config['batch_size']
+        self.weight_decay = config['weight_decay']
         self.build((config['crop_image_height'],config['crop_image_width']))
         
     def build(self, size=(128,128)):
@@ -174,7 +175,7 @@ class FUNIT(tf.keras.Model):
         gen_grad = g_tape.gradient(G_loss, self.gen.trainable_variables)
         # Weight Decay
         for i in range(len(gen_grad)):
-            gen_grad[i] = gen_grad[i] + (0.0001 * self.gen.trainable_variables[i])
+            gen_grad[i] = gen_grad[i] + (self.weight_decay * self.gen.trainable_variables[i])
         self.opt_gen.apply_gradients(zip(gen_grad, self.gen.trainable_variables))
         return G_loss, gen_grad
         
@@ -204,7 +205,7 @@ class FUNIT(tf.keras.Model):
         dis_grad = d_tape.gradient(D_loss, self.dis.trainable_variables)
         # Weight Decay
         for i in range(len(dis_grad)):
-            dis_grad[i] = dis_grad[i] + (0.0001 * self.dis.trainable_variables[i])
+            dis_grad[i] = dis_grad[i] + (self.weight_decay * self.dis.trainable_variables[i])
         self.opt_dis.apply_gradients(zip(dis_grad, self.dis.trainable_variables))
         return D_loss, dis_grad
     
@@ -238,12 +239,12 @@ class FUNIT(tf.keras.Model):
     
     def compute_style_code(self, style_batch):
         # style_batch = [1, 128, 128, 3]
-        code_style_batch = self.gen.E_class(style_batch)
+        code_style_batch = self.gen_test.E_class(style_batch)
         return code_style_batch
     
     def translate_simple(self, content_image, class_code):
         # content_image = [1, 128, 128, 3]
         # class_code = [1, 64]
-        content_fea = self.gen.E_content(content_image)
-        xt = self.gen.decode(content_fea, class_code)
+        content_fea = self.gen_test.E_content(content_image)
+        xt = self.gen_test.decode(content_fea, class_code)
         return xt
